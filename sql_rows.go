@@ -3,8 +3,6 @@ package helper
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
-	"reflect"
 	"time"
 )
 
@@ -100,16 +98,14 @@ func (o *SqlRows)  GetRowColumnStringValue(v interface{}) (str string, ok bool) 
 	if ok {
 		v = *nv
 	}
-	t := reflect.TypeOf(v)
-	fmt.Println(t.Name(), t.Kind())
 	switch v.(type) {
-	case []uint8:
-		bytes, _ := v.([]uint8)
-		str = string(bytes)
-		return
-	case time.Time:
-		t, _ := v.(time.Time)
-		str = t.String()
+		case []uint8:
+			bytes, _ := v.([]uint8)
+			str = string(bytes)
+			return
+		case time.Time:
+			t, _ := v.(time.Time)
+			str = t.String()
 	}
 	return
 }
