@@ -3,6 +3,7 @@ package helper
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -15,27 +16,56 @@ func NewSqlRows() *SqlRows {
 
 	}
 }
+func (o *SqlRows) GetRowsScanData(columns[]string, srcMp map[string]interface{}) (row []interface{}, err error) {
+	if columns == nil {
+		err = ErrRowsScanDataAssertTypeColumnsNil
+		return
+	}
+	if srcMp == nil {
+		err = ErrRowsScanDataAssertTypeSrcMpNil
+		return
+	}
 
+	row = make([]interface{}, len(srcMp))
+	for i, f := range columns {
+		t := srcMp[f]
+		switch t.(type) {
+		case int64:
+			var tt int64 = 0
+			row[i] = &tt
+			fmt.Println(f, "int64")
+		case float64:
+			var tt float64 = 0
+			row[i] = &tt
+			fmt.Println(f, "float64")
+		case string:
+			var tt string = ""
+			row[i] = &tt
+			fmt.Println(f, "string")
+		case bool:
+			var tt bool
+			row[i] = &tt
+		default:
+			err = fmt.Errorf("%w %T" ,ErrRowsScanDataAssertTypeNil, t)
+			return
+		}
+	}
+	return row, nil
+}
 // GetRowsData 根据指定类型 获取 rows 数据列表
 func (o *SqlRows) GetRowsData(rows *sql.Rows, srcMp map[string]interface{}) (listData []map[string]interface{}, err error) {
 	columns, err := rows.Columns()
+	newSrcMp, err := o.DeepCopyJson(srcMp)
 	if err != nil {
 		return
 	}
-
-	NewSrcMap, err := o.DeepCopyJson(srcMp)
-	if err != nil {
-		return
-	}
-
 	listData = make([]map[string]interface{},0)
 	for rows.Next() {
-		row := make([]interface{}, len(columns))
-		for i, f := range columns {
-			var v interface{}
-			v = NewSrcMap[f]
-			row[i] = v
+		row, err := o.GetRowsScanData(columns, newSrcMp)
+		if err != nil {
+			return nil, err
 		}
+		rows.Scan(row...)
 		rowMap := make(map[string]interface{}, 0)
 		for k, d := range row {
 			rowMap[columns[k]] = d
@@ -64,6 +94,7 @@ func (o *SqlRows) GetRowsStringData(rows *sql.Rows) (listData []map[string]inter
 
 		}
 		rowMap := make(map[string]interface{}, 0)
+		fmt.Sprintf("GetRowsStringData.......\n %#v\n", row)
 		for k, cv := range row {
 			cs, ok := o.GetRowColumnStringValue(cv)
 			if !ok {
@@ -85,9 +116,10 @@ func (o *SqlRows)  DeepCopyJson(src map[string]interface{}) (dest map[string]int
 	if err != nil {
 		return
 	}
+	dest = make(map[string]interface{})
 	err = json.Unmarshal(jsonStr, &dest)
 	if err != nil {
-		return
+		return nil, err
 	}
 	return
 }
