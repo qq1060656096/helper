@@ -31,17 +31,14 @@ func (o *SqlRows) GetRowsScanData(columns[]string, srcMp map[string]interface{})
 		t := srcMp[f]
 		switch t.(type) {
 		case int64:
-			var tt int64 = 0
+			var tt int64
 			row[i] = &tt
-			fmt.Println(f, "int64")
 		case float64:
-			var tt float64 = 0
+			var tt float64
 			row[i] = &tt
-			fmt.Println(f, "float64")
 		case string:
-			var tt string = ""
+			var tt string
 			row[i] = &tt
-			fmt.Println(f, "string")
 		case bool:
 			var tt bool
 			row[i] = &tt
@@ -65,7 +62,10 @@ func (o *SqlRows) GetRowsData(rows *sql.Rows, srcMp map[string]interface{}) (lis
 		if err != nil {
 			return nil, err
 		}
-		rows.Scan(row...)
+		err = rows.Scan(row...)
+		if err != nil {
+			return nil, err
+		}
 		rowMap := make(map[string]interface{}, 0)
 		for k, d := range row {
 			rowMap[columns[k]] = d
@@ -91,14 +91,13 @@ func (o *SqlRows) GetRowsStringData(rows *sql.Rows) (listData []map[string]inter
 		}
 		err := rows.Scan(row...)
 		if err != nil {
-
+			return nil, err
 		}
 		rowMap := make(map[string]interface{}, 0)
-		fmt.Sprintf("GetRowsStringData.......\n %#v\n", row)
 		for k, cv := range row {
-			cs, ok := o.GetRowColumnStringValue(cv)
-			if !ok {
-
+			cs, err := o.GetRowColumnStringValue(cv)
+			if err != nil {
+				return nil, err
 			}
 			rowMap[columns[k]] = cs
 		}
@@ -125,7 +124,7 @@ func (o *SqlRows)  DeepCopyJson(src map[string]interface{}) (dest map[string]int
 }
 
 // GetRowColumnStringValue 获取数据库表记录 字段值是 string 类
-func (o *SqlRows)  GetRowColumnStringValue(v interface{}) (str string, ok bool) {
+func (o *SqlRows)  GetRowColumnStringValue(v interface{}) (str string, err error) {
 	nv, ok := v.(*interface{})
 	if ok {
 		v = *nv
@@ -138,6 +137,9 @@ func (o *SqlRows)  GetRowColumnStringValue(v interface{}) (str string, ok bool) 
 		case time.Time:
 			t, _ := v.(time.Time)
 			str = t.String()
+		default:
+			err = fmt.Errorf("%w %T" ,ErrRowsStringDataAssertTypeNil, v)
+			return
 	}
 	return
 }
